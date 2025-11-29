@@ -5,17 +5,21 @@ from app.core.logging import get_logger
 
 logger = get_logger(__name__)
 
-# Create async engine
+# Create async engine with server_settings to disable prepared statements
+# This is required for Supabase pgbouncer in transaction mode
+print("--==-=---=-=--=-=-=-",settings.DATABASE_URL)
 engine = create_async_engine(
     settings.DATABASE_URL,
     echo=False,
     pool_pre_ping=True,
     pool_size=10,
     max_overflow=20,
-
-    # Disable prepared statement caching for Supabase pgbouncer compatibility
-    # Supabase pooler uses transaction mode which doesn't support prepared statements
-    connect_args={"statement_cache_size": 0},
+    connect_args={
+        "server_settings": {
+            "jit": "off",  # Disable JIT for compatibility
+        },
+        "statement_cache_size": 0,  # Disable prepared statement cache for pgbouncer
+    },
 )
 
 # Create session factory
