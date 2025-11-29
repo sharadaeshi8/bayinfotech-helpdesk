@@ -37,13 +37,9 @@ class Settings(BaseSettings):
             url = self.DATABASE_URL_OVERRIDE
             if url.startswith("postgresql://"):
                 url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
-            # Append prepared statement cache size parameter for Supabase pooler compatibility
-            # This disables prepared statements which don't work with pgbouncer in transaction mode
-            separator = "&" if "?" in url else "?"
-            url = f"{url}{separator}prepared_statement_cache_size=0"
             return url
         # Otherwise construct from individual settings
-        return f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}?prepared_statement_cache_size=0"
+        return f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
 
     model_config = SettingsConfigDict(case_sensitive=True, env_file=".env")
 
