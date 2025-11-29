@@ -1,24 +1,26 @@
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import declarative_base
+from sqlalchemy.pool import NullPool
 from app.core.config import settings
 from app.core.logging import get_logger
 
 logger = get_logger(__name__)
 
-# Create async engine with server_settings to disable prepared statements
-# This is required for Supabase pgbouncer in transaction mode
-print("--==-=---=-=--=-=-=-",settings.DATABASE_URL)
+print("--==-=---=-=--=-=-=-", settings.DATABASE_URL)
+
+# For Supabase pooler, we need to completely disable connection pooling
+# and prepared statements
 engine = create_async_engine(
     settings.DATABASE_URL,
     echo=False,
-    pool_pre_ping=True,
-    pool_size=10,
-    max_overflow=20,
+    poolclass=NullPool,  # Disable SQLAlchemy pooling, let Supabase handle it
     connect_args={
         "server_settings": {
-            "jit": "off",  # Disable JIT for compatibility
+            "jit": "off",
+            "application_name": "bayinfotech-helpdesk",
         },
-        "statement_cache_size": 0,  # Disable prepared statement cache for pgbouncer
+        "statement_cache_size": 0,
+        "prepared_statement_cache_size": 0,
     },
 )
 
@@ -47,17 +49,21 @@ async def init_db():
     try:
         from sqlalchemy import text
         
-        async with engine.begin() as conn:
-            # Enable pgvector extension
-            await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
-            logger.info("pgvector extension enabled")
-            
-            # Import models to register them with Base
-            from app.models import models  # noqa: F401
-            
-            # Create all tables
-            await conn.run_sync(Base.metadata.create_all)
-            logger.info("Database tables created successfully")
+        # Use separate connections to avoid prepared statement conflicts
+        async with engine.connect() as conn:
+            async with conn.begin():
+                # Enable pgvector extension
+                await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+                logger.info("pgvector extension enabled")
+        
+        # Import models to register them with Base
+        from app.models import models  # noqa: F401
+        
+        # Create tables in a separate connection
+        async with engine.connect() as conn:
+            async with conn.begin():
+                await conn.run_sync(Base.metadata.create_all)
+                logger.info("Database tables created successfully")
             
     except Exception as e:
         logger.error(f"Error initializing database: {e}")
