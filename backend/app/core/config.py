@@ -37,13 +37,6 @@ class Settings(BaseSettings):
             url = self.DATABASE_URL_OVERRIDE
             if url.startswith("postgresql://"):
                 url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
-            
-            # Add pgbouncer query parameter if using pooler
-            if ".pooler." in url and "?" not in url:
-                url += "?prepared_statement_cache_size=0"
-            elif ".pooler." in url:
-                url += "&prepared_statement_cache_size=0"
-                
             return url
         # Otherwise construct from individual settings
         return f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
