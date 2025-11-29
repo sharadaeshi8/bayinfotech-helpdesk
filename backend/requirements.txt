@@ -5,7 +5,7 @@ pydantic-settings==2.1.0
 langchain==0.1.0
 langchain-community
 langchain-openai
-openai==1.6.1
+openai==1.54.0
 faiss-cpu==1.9.0.post1
 python-multipart==0.0.6
 sqlalchemy==2.0.23
